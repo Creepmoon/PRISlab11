@@ -1,0 +1,11 @@
+server:
+  port: 8087
+
+spring:
+  application:
+    name: analytics-service
+
+edusphere:
+  services:
+    grading: http://${GRADING_HOST:localhost}:8086
+    adaptive: http://${ADAPTIVE_HOST:localhost}:8085

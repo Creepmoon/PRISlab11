@@ -1,0 +1,174 @@
+
+
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: edusphere-postgres
+    environment:
+      POSTGRES_USER: edusphere
+      POSTGRES_PASSWORD: edusphere
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/init-databases.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edusphere"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: edusphere-redis
+    ports:
+      - "6379:6379"
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AUTH_HOST: auth-service
+      USER_HOST: user-service
+      MATERIALS_HOST: materials-service
+      CURRICULUM_HOST: curriculum-service
+      ADAPTIVE_HOST: adaptive-learning-service
+      GRADING_HOST: grading-service
+      ANALYTICS_HOST: analytics-service
+      AR_HOST: ar-session-service
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args:
+        SERVICE: auth-service
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      JWT_SECRET: edusphere-jwt-secret-key-min-32-chars!!
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+
+  user-service:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args:
+        SERVICE: user-service
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+
+  materials-service:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args:
+        SERVICE: materials-service
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+
+  curriculum-service:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args:
+        SERVICE: curriculum-service
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+
+  adaptive-learning-service:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args:
+        SERVICE: adaptive-learning-service
+    ports:
+      - "8085:8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+
+  grading-service:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args:
+        SERVICE: grading-service
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args:
+        SERVICE: analytics-service
+    ports:
+      - "8087:8087"
+    depends_on:
+      - grading-service
+      - adaptive-learning-service
+    environment:
+      GRADING_HOST: grading-service
+      ADAPTIVE_HOST: adaptive-learning-service
+
+  ar-session-service:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.service
+      args:
+        SERVICE: ar-session-service
+    ports:
+      - "8088:8088"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - api-gateway
+
+volumes:
+  postgres_data:

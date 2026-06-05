@@ -1,0 +1,13 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: adaptive-learning-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/edusphere_adaptive
+    username: ${DB_USER:edusphere}
+    password: ${DB_PASSWORD:edusphere}
+  jpa:
+    hibernate:
+      ddl-auto: update
